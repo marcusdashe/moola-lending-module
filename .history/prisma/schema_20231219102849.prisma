@@ -1,0 +1,126 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model User {
+  id            Int            @id @default(autoincrement())
+  username      String
+  groups        Group[]
+  issues        Issue[]
+  contributions Contribution[]
+  loans         Loan[]
+  loanCycle     LoanCycle?
+  notification  Notification[]
+  score         Int            @default(0)
+  active        Boolean        @default(true)
+}
+
+model Group {
+  id            Int            @id @default(autoincrement())
+  name          String
+  size          Int
+  leaderId      Int
+  // members User[] @relation(fields: [memberId], references: [id]) Sqlite limitation
+  members       User           @relation(fields: [memberId], references: [id])
+  memberId      Int
+  contributions Contribution[]
+  loans         Loan[]
+  loanCycles    LoanCycle[]
+  createdAt     DateTime       @default(now())
+  status        GroupStatus    @default(ACTIVE)
+}
+
+enum GroupStatus {
+  ACTIVE
+  DISSOLVED
+}
+
+model Contribution {
+  id      Int   @id @default(autoincrement())
+  amount  Int
+  user    User  @relation(fields: [userId], references: [id])
+  userId  Int
+  group   Group @relation(fields: [groupId], references: [id])
+  groupId Int
+}
+
+model Loan {
+  id           Int         @id @default(autoincrement())
+  amount       Float
+  group        Group       @relation(fields: [groupId], references: [id])
+  groupId      Int
+  borrower     User        @relation(fields: [borrowerId], references: [id])
+  borrowerId   Int
+  repayment    Repayment[]
+  repaymentId  Int
+  repaidAmount Int         @default(0)
+  dueDate      DateTime
+  interestRate Float?
+  status       LoanStatus  @default(PENDING)
+}
+
+enum LoanStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REPAID
+  DEFAULTED
+}
+
+model LoanCycle {
+  id          Int       @id @default(autoincrement())
+  group       Group     @relation(fields: [groupId], references: [id])
+  groupId     Int
+  // currentRecipient User    @relation(fields: [currentRecipientId] references: [id])
+  // currentRecipientId Int
+  // previousRecipients User[] @relation(fields: [previousRecipientId], references: [id]) @relation("previousRecipient")
+  // previousRecipientId Int
+  recipient   User      @relation(fields: [recipientId], references: [id])
+  recipientId Int       @unique
+  isCurrent   Boolean   @default(true)
+  startDate   DateTime  @default(now())
+  endDate     DateTime?
+}
+
+model Repayment {
+  id          Int      @id @default(autoincrement())
+  amount      Int
+  loan        Loan     @relation(fields: [loanId], references: [id])
+  loanId      Int
+  description String
+  date        DateTime @default(now())
+}
+
+model Issue {
+  id          Int    @id @default(autoincrement())
+  description String
+  user        User   @relation(fields: [userId], references: [id])
+  userId      Int
+}
+
+model Notification {
+  id      Int              @id @default(autoincrement())
+  type    NotificationType
+  user    User             @relation(fields: [userId], references: [id])
+  userId  Int
+  groupId Int?
+  sentAt  DateTime         @default(now())
+}
+
+enum NotificationType {
+  GROUP_INVITE
+  LOAN_APPLICATION_UPDATE
+  CONTRIBUTION_REMINDER
+  LOAN_DUE_REMINDER
+  REPAYMENT_RECEIVED
+  DEFAULT_NOTICE
+}

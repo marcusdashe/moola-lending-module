@@ -1,0 +1,66 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// datasource db {
+//   provider = "postgresql"
+//   url      = env("DATABASE_URL")
+// }
+
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+
+
+// owner User @relation("HouseOwner", fields: [ownerId], references: [id])
+// 	ownerId String
+
+model User {
+  id Int @id @default(autoincrement())
+  username String
+  groups Group[]
+  issues Issue[]   @relation("userIssues", references: [id])
+  contributions Contribution[] @relation("userContributions", references: [id])
+  loans      Loan[]        @relation("userLoans", references: [id])
+}
+
+model Group {
+  id Int @id @default(autoincrement())
+  size Int
+  leaderId Int
+  members User @relation(fields: [memberId], references: [id])
+  memberId Int
+  contributions Contribution[]
+  loans   Loan[]
+}
+
+model Contribution {
+  id Int @id @default(autoincrement())
+  userId Int
+  groupId Int
+  amount Int
+  user    User    @relation("userContributions", fields: [userId], references: [id])
+  group   Group   @relation(fields: [groupId], references: [id])
+}
+
+model Loan {
+  id Int @id @default(autoincrement())
+  groupId Int
+  borrowerId Int
+  amount Int
+  group      Group   @relation(fields: [groupId], references: [id])
+  borrower   User    @relation("userLoans", fields: [borrowerId], references: [id])
+}
+
+model Issue {
+  id       Int     @id @default(autoincrement())
+  userId   Int
+  description String
+  user        User @relation("userIssues", fields: [userId], references: [id])
+}

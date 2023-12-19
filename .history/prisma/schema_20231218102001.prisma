@@ -1,0 +1,43 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// datasource db {
+//   provider = "postgresql"
+//   url      = env("DATABASE_URL")
+// }
+
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+
+model User {
+  id Int @id @default(autoincrement())
+  username String
+}
+
+model Group {
+  id Int @id @default(autoincrement())
+  size Int
+  leaderId Int
+}
+
+model Contribution {
+  id Int @id @default(autoincrement())
+  useId Int
+  groupId Int
+  amount Int
+}
+
+model Loan {
+  id Int @id @default(autoincrement())
+  groupId Int
+  borrowerId Int
+  amount Int
+}
