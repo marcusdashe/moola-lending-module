@@ -10,6 +10,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+
 model ApiKey {
   pk          Int        @id @default(autoincrement())
   id          String     @unique @default(uuid()) @db.Uuid
@@ -29,25 +30,28 @@ model ApiKey {
 
 model User {
   pk            Int            @id @default(autoincrement())
-  id             String        @unique @default(uuid()) @db.Uuid
-  email          String        @unique
+  id             String   @unique @default(uuid()) @db.Uuid
+  email          String   @unique
   phone          String?
   password       String
-  active         Boolean      @default(true)
-  staff          Boolean      @default(false)
-  admin          Boolean      @default(false)
-  emailVerified  Boolean      @default(false) @map("email_verified")
-  phoneVerified  Boolean      @default(false) @map("phone_verified")
+  active         Boolean  @default(true)
+  staff          Boolean  @default(false)
+  admin          Boolean  @default(false)
+  emailVerified  Boolean  @default(false) @map("email_verified")
+  phoneVerified  Boolean  @default(false) @map("phone_verified")
   deviceData     Json?
   profile        Profile?
   apiKey         ApiKey[]
+
   score         Int            @default(0)
   groups        Group[]
   issues        Issue[]
   contributions Contribution[]
   loans         Loan[]
-  loanCycles     LoanCycle?
-  notifications  Notification[]
+  loanCycle     LoanCycle?
+  notification  Notification[]
+  
+  
 
   @@unique([pk, id])
   @@map("users")
@@ -59,13 +63,27 @@ model Group {
   size          Int
   leaderId      Int
   // members User[] @relation(fields: [memberId], references: [id]) Sqlite limitation
-  members       User[]          // @relation(fields: [memberId], references: [pk])
-  // memberId      Int
+  members       User           @relation(fields: [memberId], references: [pk])
+  memberId      Int
   contributions Contribution[]
   loans         Loan[]
   loanCycles    LoanCycle[]
   createdAt     DateTime       @default(now())
   status        GroupStatus    @default(ACTIVE)
+}
+
+enum GroupStatus {
+  ACTIVE
+  DISSOLVED
+}
+
+model Contribution {
+  id      Int   @id @default(autoincrement())
+  amount  Int
+  user    User  @relation(fields: [userId], references: [pk])
+  userId  Int
+  group   Group @relation(fields: [groupId], references: [id])
+  groupId Int
 }
 
 model Loan {
@@ -75,87 +93,12 @@ model Loan {
   groupId      Int
   borrower     User        @relation(fields: [borrowerId], references: [pk])
   borrowerId   Int
+  repayment    Repayment[]
+  repaymentId  Int
   repaidAmount Int         @default(0)
   dueDate      DateTime
   interestRate Float?
   status       LoanStatus  @default(PENDING)
-}
-
-model Contribution {
-  id      Int   @id @default(autoincrement())
-  amount  Float
-  user    User  @relation(fields: [userId], references: [pk])
-  userId  Int
-  group   Group @relation(fields: [groupId], references: [id])
-  groupId Int
-}
-
-
-model LoanCycle {
-  id          Int       @id @default(autoincrement())
-  group       Group     @relation(fields: [groupId], references: [id])
-  groupId     Int
-  // currentRecipient User    @relation(fields: [currentRecipientId] references: [id])
-  // currentRecipientId Int
-  // previousRecipients User[] @relation(fields: [previousRecipientId], references: [id]) @relation("previousRecipient")
-  // previousRecipientId Int
-  recipient   User      @relation(fields: [recipientId], references: [pk])
-  recipientId Int       @unique
-  isCurrent   Boolean   @default(true)
-  startDate   DateTime  @default(now())
-  endDate     DateTime?
-  isActive    Boolean   @default(false)
-}
-
-// model Repayment {
-//   id          Int      @id @default(autoincrement())
-//   amount      Int
-//   loan        Loan     @relation(fields: [loanId], references: [id])
-//   loanId      Int
-//   description String
-//   date        DateTime @default(now())
-// }
-
-model Issue {
-  id          Int    @id @default(autoincrement())
-  description String
-  user        User   @relation(fields: [userId], references: [pk])
-  userId      Int
-  isResolved  Boolean   @default(false)
-}
-
-model Notification {
-  id      Int              @id @default(autoincrement())
-  type    NotificationType  @default(DEFAULT_NOTICE)
-  user    User             @relation(fields: [userId], references: [pk])
-  userId  Int
-  groupId Int?
-  sentAt  DateTime         @default(now())
-  isRead    Boolean   @default(false)
-
-}
-
-enum NotificationType {
-  GROUP_INVITE
-  LOAN_APPLICATION_UPDATE
-  CONTRIBUTION_REMINDER
-  LOAN_DUE_REMINDER
-  REPAYMENT_RECEIVED
-  DEFAULT_NOTICE
-}
-
-enum GroupStatus {
-  ACTIVE
-  DISSOLVED
-}
-
-enum LoanStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  REPAID
-  DEFAULTED
-  ACTIVE
 }
 
 model Profile {
@@ -307,8 +250,6 @@ model PhysicalCard {
   @@unique([bankAccountPk, bankAccountId])
   @@map("physical_cards")
 }
-
-
 enum GlobalTransactionLedgerType {
   LOCALBANKTRANSFER
   INTERBANKTRANSFER
@@ -325,7 +266,13 @@ enum PaymentProvider {
   NIBSS
 }
 
-
+enum LoanStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REPAID
+  DEFAULTED
+}
 
 enum VerificationStatus {
   NOT_VERIFIED
@@ -350,6 +297,54 @@ enum IdentificationCardType {
   VOTERS_CARD
 }
 
+model LoanCycle {
+  id          Int       @id @default(autoincrement())
+  group       Group     @relation(fields: [groupId], references: [id])
+  groupId     Int
+  // currentRecipient User    @relation(fields: [currentRecipientId] references: [id])
+  // currentRecipientId Int
+  // previousRecipients User[] @relation(fields: [previousRecipientId], references: [id]) @relation("previousRecipient")
+  // previousRecipientId Int
+  recipient   User      @relation(fields: [recipientId], references: [pk])
+  recipientId Int       @unique
+  isCurrent   Boolean   @default(true)
+  startDate   DateTime  @default(now())
+  endDate     DateTime?
+}
+
+model Repayment {
+  id          Int      @id @default(autoincrement())
+  amount      Int
+  loan        Loan     @relation(fields: [loanId], references: [id])
+  loanId      Int
+  description String
+  date        DateTime @default(now())
+}
+
+model Issue {
+  id          Int    @id @default(autoincrement())
+  description String
+  user        User   @relation(fields: [userId], references: [pk])
+  userId      Int
+}
+
+model Notification {
+  id      Int              @id @default(autoincrement())
+  type    NotificationType
+  user    User             @relation(fields: [userId], references: [pk])
+  userId  Int
+  groupId Int?
+  sentAt  DateTime         @default(now())
+}
+
+enum NotificationType {
+  GROUP_INVITE
+  LOAN_APPLICATION_UPDATE
+  CONTRIBUTION_REMINDER
+  LOAN_DUE_REMINDER
+  REPAYMENT_RECEIVED
+  DEFAULT_NOTICE
+}
 
 enum Currency {
   NGN

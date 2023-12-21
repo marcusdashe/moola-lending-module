@@ -121,7 +121,6 @@ model Issue {
   description String
   user        User   @relation(fields: [userId], references: [pk])
   userId      Int
-  isResolved  Boolean   @default(false)
 }
 
 model Notification {

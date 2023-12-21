@@ -30,15 +30,15 @@ import { UserModule } from './api/user/user.module';
     UserModule,
   ],
   // controllers: [GroupController],
-  providers: [
-    PrismaService,
-    GroupService,
-    UserService,
-    LoanService,
-    ContributionService,
-    LoanCycleService,
-    IssueService,
-    NotificationService,
-  ],
+  // providers: [
+  //   PrismaService,
+  //   GroupService,
+  //   UserService,
+  //   LoanService,
+  //   ContributionService,
+  //   LoanCycleService,
+  //   IssueService,
+  //   NotificationService,
+  // ],
 })
 export class AppModule {}

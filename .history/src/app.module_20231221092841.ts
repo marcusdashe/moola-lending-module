@@ -29,7 +29,7 @@ import { UserModule } from './api/user/user.module';
     ContributionModule,
     UserModule,
   ],
-  // controllers: [GroupController],
+  controllers: [GroupController],
   providers: [
     PrismaService,
     GroupService,

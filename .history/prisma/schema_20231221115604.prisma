@@ -75,6 +75,8 @@ model Loan {
   groupId      Int
   borrower     User        @relation(fields: [borrowerId], references: [pk])
   borrowerId   Int
+  // repayment    Repayment[]
+  repaymentId  Int
   repaidAmount Int         @default(0)
   dueDate      DateTime
   interestRate Float?
@@ -104,7 +106,6 @@ model LoanCycle {
   isCurrent   Boolean   @default(true)
   startDate   DateTime  @default(now())
   endDate     DateTime?
-  isActive    Boolean   @default(false)
 }
 
 // model Repayment {
@@ -121,18 +122,15 @@ model Issue {
   description String
   user        User   @relation(fields: [userId], references: [pk])
   userId      Int
-  isResolved  Boolean   @default(false)
 }
 
 model Notification {
   id      Int              @id @default(autoincrement())
-  type    NotificationType  @default(DEFAULT_NOTICE)
+  type    NotificationType
   user    User             @relation(fields: [userId], references: [pk])
   userId  Int
   groupId Int?
   sentAt  DateTime         @default(now())
-  isRead    Boolean   @default(false)
-
 }
 
 enum NotificationType {
@@ -155,7 +153,6 @@ enum LoanStatus {
   REJECTED
   REPAID
   DEFAULTED
-  ACTIVE
 }
 
 model Profile {

@@ -104,7 +104,6 @@ model LoanCycle {
   isCurrent   Boolean   @default(true)
   startDate   DateTime  @default(now())
   endDate     DateTime?
-  isActive    Boolean   @default(false)
 }
 
 // model Repayment {
@@ -121,18 +120,15 @@ model Issue {
   description String
   user        User   @relation(fields: [userId], references: [pk])
   userId      Int
-  isResolved  Boolean   @default(false)
 }
 
 model Notification {
   id      Int              @id @default(autoincrement())
-  type    NotificationType  @default(DEFAULT_NOTICE)
+  type    NotificationType
   user    User             @relation(fields: [userId], references: [pk])
   userId  Int
   groupId Int?
   sentAt  DateTime         @default(now())
-  isRead    Boolean   @default(false)
-
 }
 
 enum NotificationType {

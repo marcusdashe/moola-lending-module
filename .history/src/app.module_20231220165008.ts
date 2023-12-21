@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
-
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 import { PrismaService } from './prisma/prisma.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { GroupService } from './group/group.service';
 import { GroupController } from './group/group.controller';
+import { UserService } from './user/user.service';
 import { LoanService } from './api/loan/loan.service';
 import { ContributionService } from './api/contribution/contribution.service';
 import { LoanCycleService } from './api/loan-cycle/loan-cycle.service';
@@ -15,8 +17,6 @@ import { LoanModule } from './api/loan/loan.module';
 import { IssueModule } from './api/issue/issue.module';
 import { GroupModule } from './api/group/group.module';
 import { ContributionModule } from './api/contribution/contribution.module';
-import { UserService } from './api/user/user.service';
-import { UserModule } from './api/user/user.module';
 
 @Module({
   imports: [
@@ -27,10 +27,10 @@ import { UserModule } from './api/user/user.module';
     IssueModule,
     GroupModule,
     ContributionModule,
-    UserModule,
   ],
-  // controllers: [GroupController],
+  controllers: [AppController, GroupController],
   providers: [
+    AppService,
     PrismaService,
     GroupService,
     UserService,
