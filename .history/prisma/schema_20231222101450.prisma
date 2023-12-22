@@ -1,0 +1,659 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ApiKey {
+  pk          Int        @id @default(autoincrement())
+  id          String     @unique @default(uuid()) @db.Uuid
+  key         String     @unique
+  active      Boolean    @default(true)
+  staffPk     Int?       @map("staff_pk")
+  staffId     String?    @map("staff_id") @db.Uuid
+  staff       User?      @relation(fields: [staffPk, staffId], references: [pk, id])
+  workspacePk Int?       @map("workspace_pk")
+  workspaceId String?    @map("workspace_id") @db.Uuid
+  workspace   Workspace? @relation(fields: [workspacePk, workspaceId], references: [pk, id])
+
+  @@unique([workspacePk, workspaceId])
+  @@unique([pk, id])
+  @@map("api_keys")
+}
+
+model User {
+  pk            Int            @id @default(autoincrement())
+  id             String        @unique @default(uuid()) @db.Uuid
+  email          String        @unique
+  phone          String?
+  password       String
+  active         Boolean      @default(true)
+  staff          Boolean      @default(false)
+  admin          Boolean      @default(false)
+  emailVerified  Boolean      @default(false) @map("email_verified")
+  phoneVerified  Boolean      @default(false) @map("phone_verified")
+  deviceData     Json?
+  profile        Profile?
+  apiKey         ApiKey[]
+  score         Int            @default(0)
+  groups        Group[]
+  issues        Issue[]
+  contributions Contribution[]
+  loans         Loan[]
+  loanCycles     LoanCycle?
+  notifications  Notification[]
+
+  @@unique([pk, id])
+  @@map("users")
+}
+
+model Group {
+  id            Int            @id @default(autoincrement())
+  name          String
+  size          Int
+  leaderId      Int
+  members       User[]              
+  contributions Contribution[]
+  loans         Loan[]
+  loanCycles    LoanCycle[]
+  createdAt     DateTime       @default(now())
+  status        GroupStatus    @default(ACTIVE)
+}
+
+model Loan {
+  id           Int         @id @default(autoincrement())
+  amount       Float
+  group        Group       @relation(fields: [groupId], references: [id])
+  groupId      Int
+  borrower     User        @relation(fields: [borrowerId], references: [pk])
+  borrowerId   Int
+  repaidAmount Int         @default(0)
+  dueDate      DateTime
+  interestRate Float?
+  status       LoanStatus  @default(PENDING)
+}
+
+model Contribution {
+  id      Int   @id @default(autoincrement())
+  amount  Float
+  user    User  @relation(fields: [userId], references: [pk])
+  userId  Int
+  group   Group @relation(fields: [groupId], references: [id])
+  groupId Int
+}
+
+
+model LoanCycle {
+  id          Int       @id @default(autoincrement())
+  group       Group     @relation(fields: [groupId], references: [id])
+  groupId     Int
+  // currentRecipient User    @relation(fields: [currentRecipientId] references: [id])
+  // currentRecipientId Int
+  // previousRecipients User[] @relation(fields: [previousRecipientId], references: [id]) @relation("previousRecipient")
+  // previousRecipientId Int
+  recipient   User      @relation(fields: [recipientId], references: [pk])
+  recipientId Int       @unique
+  isCurrent   Boolean   @default(true)
+  startDate   DateTime  @default(now())
+  endDate     DateTime?
+  isActive    Boolean   @default(false)
+}
+
+// model Repayment {
+//   id          Int      @id @default(autoincrement())
+//   amount      Int
+//   loan        Loan     @relation(fields: [loanId], references: [id])
+//   loanId      Int
+//   description String
+//   date        DateTime @default(now())
+// }
+
+model Issue {
+  id          Int    @id @default(autoincrement())
+  description String
+  user        User   @relation(fields: [userId], references: [pk])
+  userId      Int
+  isResolved  Boolean   @default(false)
+}
+
+model Notification {
+  id      Int              @id @default(autoincrement())
+  type    NotificationType  @default(DEFAULT_NOTICE)
+  user    User             @relation(fields: [userId], references: [pk])
+  userId  Int
+  groupId Int?
+  sentAt  DateTime         @default(now())
+  isRead    Boolean   @default(false)
+
+}
+
+enum NotificationType {
+  GROUP_INVITE
+  LOAN_APPLICATION_UPDATE
+  CONTRIBUTION_REMINDER
+  LOAN_DUE_REMINDER
+  REPAYMENT_RECEIVED
+  DEFAULT_NOTICE
+}
+
+enum GroupStatus {
+  ACTIVE
+  DISSOLVED
+}
+
+enum LoanStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REPAID
+  DEFAULTED
+  ACTIVE
+}
+
+model Profile {
+  pk                     Int                     @id @default(autoincrement())
+  id                     String                  @unique @default(uuid()) @db.Uuid
+  photo                  String?
+  dob                    DateTime?
+  firstName              String?                 @map("first_name")
+  lastName               String?                 @map("last_name")
+  username               String                  @unique
+  referrerCode           String                  @unique @map("affliation_code")
+  referralPk             Int?                    @map("referrer_pk")
+  referralId             String?                 @map("referrer_id") @db.Uuid
+  referrer               Profile?                @relation("referrer", fields: [referralPk, referralId], references: [pk, id])
+  refers                 Profile[]               @relation("referrer")
+  personalPin            String?                 @map("personal_pin")
+  userPk                 Int                     @unique @map("user_pk")
+  userId                 String                  @unique @map("user_id") @db.Uuid
+  user                   User                    @relation(fields: [userPk, userId], references: [pk, id], onDelete: Cascade, onUpdate: Cascade)
+  homeAddress            String?                 @map("home_address")
+  comonoRequestId        String?                 @unique @map("comono_request_id")
+  lga                    String?
+  state                  String?
+  city                   String?
+  closestLandmark        String?                 @map("closest_landmark")
+  bankAccount            BankAccount?
+  idFront                String?
+  idBack                 String?
+  bvn                    String?
+  idType                 IdentificationCardType? @map("id_type")
+  idNumber               String?                 @map("id_number")
+  addressDocument        String?                 @map("address_document")
+  bvnVerified            VerificationStatus      @default(NOT_VERIFIED) @map("bvn_verified")
+  idVerified             VerificationStatus      @default(NOT_VERIFIED) @map("id_verified")
+  addressVerified        VerificationStatus      @default(NOT_VERIFIED) @map("address_verified")
+  digitalAddressVerified VerificationStatus      @default(NOT_VERIFIED) @map("digital_address_verified")
+  faceVerified           VerificationStatus      @default(NOT_VERIFIED) @map("face_verified")
+  nextOfKin              String?                 @map("next_of_kin")
+  maritalStatus          String?                 @map("marital_status")
+  deviceToken            String?                 @map("device_token")
+
+  // Raw data
+  rawBvnData            Json?
+  rawIdData             Json?
+  rawAddressData        Json?
+  rawDigitalAddressData Json?
+  rawFaceData           Json?
+
+  @@unique([pk, id])
+  @@unique([userPk, userId])
+  @@map("profiles")
+}
+
+model Image {
+  pk  Int    @id @default(autoincrement())
+  id  String @unique @default(uuid()) @db.Uuid
+  url String
+
+  @@unique([pk, id])
+  @@map("images")
+}
+
+model AccountTier {
+  pk                   Int           @id @default(autoincrement())
+  id                   String        @unique @default(uuid()) @db.Uuid
+  ref                  String        @unique
+  name                 String        @unique
+  dailyWithdrawalLimit Float         @map("daily_withdrawal_limit")
+  dailyTransferLimit   Float         @map("daily_transfer_limit")
+  dailyDepositLimit    Float         @map("daily_deposit_limit")
+  bankAccounts         BankAccount[]
+
+  @@unique([pk, id])
+  @@map("account_tiers")
+}
+
+model BankAccount {
+  pk                     Int           @id @default(autoincrement())
+  id                     String        @unique @default(uuid()) @db.Uuid
+  transactionTrackingRef String        @unique @map("transaction_tracking_ref")
+  customerId             String        @unique @map("customer_id")
+  tierPk                 Int           @map("tier_pk")
+  tierId                 String        @map("tier_id") @db.Uuid
+  tier                   AccountTier   @relation(fields: [tierPk, tierId], references: [pk, id])
+  accountNumber          String        @map("account_number")
+  profilePk              Int           @map("profile_pk")
+  profileId              String        @map("profile_id") @db.Uuid
+  profile                Profile       @relation(fields: [profilePk, profileId], references: [pk, id], onDelete: Cascade, onUpdate: Cascade)
+  transactions           Transaction[]
+  virtualCard            VirtualCard?
+  physicalCard           PhysicalCard?
+  pnd                    Boolean       @default(true)
+
+  @@unique([pk, id])
+  @@unique([profilePk, profileId])
+  @@map("bank_accounts")
+}
+
+model VirtualCard {
+  pk                     Int           @id @default(autoincrement())
+  id                     String        @unique @default(uuid()) @db.Uuid
+  title                  String
+  fullname               String
+  email                  String
+  phone                  String
+  pin                    String
+  dob                    DateTime      @map("date_of_birth")
+  cardNumber             String?
+  expiryDate             String?
+  cvv                    String?
+  bankAccountPk          Int           @map("bank_account_pk")
+  bankAccountId          String        @map("bank_account_id") @db.Uuid
+  bankAccount            BankAccount   @relation(fields: [bankAccountPk, bankAccountId], references: [pk, id], onDelete: Cascade, onUpdate: Cascade)
+  Transaction            Transaction[]
+  maximumDailyLimit      Float?        @map("maximum_daily_limit")
+  maximumDailyWithdrawal Float?        @map("maximum_daily_withdrawal")
+  status                 CardStatus    @default(PENDING)
+
+  @@unique([pk, id])
+  @@unique([bankAccountPk, bankAccountId])
+  @@map("virtual_cards")
+}
+
+model PhysicalCard {
+  pk                     Int           @id @default(autoincrement())
+  id                     String        @unique @default(uuid()) @db.Uuid
+  title                  String
+  fullname               String
+  email                  String
+  phone                  String
+  pin                    String
+  address                String
+  lga                    String
+  state                  String
+  closestLandmark        String
+  dob                    DateTime      @map("date_of_birth")
+  cardNumber             String?
+  expiryDate             String?
+  cvv                    String?
+  bankAccountPk          Int           @map("bank_account_pk")
+  bankAccountId          String        @map("bank_account_id") @db.Uuid
+  bankAccount            BankAccount   @relation(fields: [bankAccountPk, bankAccountId], references: [pk, id], onDelete: Cascade, onUpdate: Cascade)
+  Transaction            Transaction[]
+  maximumDailyLimit      Float?        @map("maximum_daily_limit")
+  maximumDailyWithdrawal Float?        @map("maximum_daily_withdrawal")
+  status                 CardStatus    @default(PENDING)
+
+  @@unique([pk, id])
+  @@unique([bankAccountPk, bankAccountId])
+  @@map("physical_cards")
+}
+
+
+enum GlobalTransactionLedgerType {
+  LOCALBANKTRANSFER
+  INTERBANKTRANSFER
+}
+
+enum GlobalTransactionLedgerStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum PaymentProvider {
+  APPZONE
+  NIBSS
+}
+
+
+
+enum VerificationStatus {
+  NOT_VERIFIED
+  PENDING
+  APPROVED
+  DECLINED
+}
+
+enum CardStatus {
+  PENDING
+  APPROVED
+  ACTIVE
+  DECLINED
+  BLOCKED
+  LOCKED
+}
+
+enum IdentificationCardType {
+  DRIVERS_LICENSE
+  INTERNATIONAL_PASSPORT
+  NATIONAL_ID
+  VOTERS_CARD
+}
+
+
+enum Currency {
+  NGN
+  USD
+  GBP
+  EUR
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+
+
+model GlobalTransactionLog {
+  pk                   Int                           @id @default(autoincrement())
+  id                   String                        @unique @default(uuid()) @db.Uuid
+  reference            String                        @unique
+  providerRef          String?                       @unique
+  amount               Float
+  type                 GlobalTransactionLedgerType
+  provider             PaymentProvider               @default(APPZONE)
+  status               GlobalTransactionLedgerStatus
+  data                 Json
+  response             Json
+  createdAt            DateTime                      @default(now()) @map("created_at")
+  completedAt          DateTime?                     @map("completed_at")
+  nativeTransactions   Transaction[]
+  workspaceTransaction WorkspaceTransaction?
+
+  @@unique([pk, id])
+  @@map("global_transaction_ledger")
+}
+
+enum TransactionType {
+  DEPOSIT
+  REFUND
+  TRANSFER
+  BILL_PAYMENT
+  CARD_REQUEST
+}
+
+model Transaction {
+  pk                     Int                   @id @default(autoincrement())
+  id                     String                @unique @default(uuid()) @db.Uuid
+  amount                 Float
+  bankPk                 Int?                  @map("bank_pk")
+  bankId                 String?               @map("bank_id") @db.Uuid
+  bank                   BankAccount?          @relation(fields: [bankPk, bankId], references: [pk, id], onDelete: SetNull, onUpdate: SetNull)
+  virtualCardPk          Int?                  @map("virtual_card_pk")
+  virtualCardId          String?               @map("virtual_card_id") @db.Uuid
+  virtualCard            VirtualCard?          @relation(fields: [virtualCardPk, virtualCardId], references: [pk, id])
+  physicalCardPk         Int?                  @map("physical_card_pk")
+  physicalCardId         String?               @map("physical_card_id") @db.Uuid
+  physicalCard           PhysicalCard?         @relation(fields: [physicalCardPk, physicalCardId], references: [pk, id])
+  type                   TransactionType
+  createdAt              DateTime              @default(now()) @map("created_at")
+  sender                 String?
+  senderName             String?
+  recipient              String?
+  recipientName          String?
+  description            String?
+  completed              Boolean               @default(false)
+  globalTransactionLogPk Int?                  @map("global_transaction_log_pk")
+  globalTransactionLogId String?               @map("global_transaction_log_id") @db.Uuid
+  globalTransactionLog   GlobalTransactionLog? @relation(fields: [globalTransactionLogPk, globalTransactionLogId], references: [pk, id])
+
+  @@unique([pk, id])
+  @@map("transactions")
+}
+
+model Workspace {
+  pk           Int                    @id @default(autoincrement())
+  id           String                 @unique @default(uuid()) @db.Uuid
+  customerId   String                 @unique
+  name         String
+  apiKey       ApiKey?
+  transactions WorkspaceTransaction[]
+  accounts     WorkspaceAccount[]
+  userAccounts WorkspaceUserAccount[]
+  active       Boolean                @default(true)
+  webhookUrl   String?                @map("webhook_url")
+  webhookEvent WebhookEvent[]
+  mandates     WorkspaceMandate[]
+
+  @@unique([pk, id])
+  @@map("workspaces")
+}
+
+model WorkspaceAccount {
+  pk                        Int       @id @default(autoincrement())
+  id                        String    @unique @default(uuid()) @db.Uuid
+  transactionTrackingRef    String    @unique @map("transaction_tracking_ref")
+  accountOpeningTrackingRef String    @unique @map("account_opening_tracking_ref")
+  accountNumber             String    @unique @map("account_number")
+  workspacePk               Int       @map("workspace_pk")
+  workspaceId               String    @map("workspace_id") @db.Uuid
+  workspace                 Workspace @relation(fields: [workspacePk, workspaceId], references: [pk, id])
+  createdAt                 DateTime  @default(now()) @map("created_at")
+  updatedAt                 DateTime  @default(now()) @map("updated_at")
+  active                    Boolean   @default(true)
+  attached                  Boolean   @default(false)
+  attachedAt                DateTime? @map("attached_at")
+  attachedTo                String?   @map("attached_to")
+
+  @@unique([pk, id])
+  @@map("workspace_accounts")
+}
+
+model WorkspaceUserAccount {
+  pk                     Int       @id @default(autoincrement())
+  id                     String    @unique @default(uuid()) @db.Uuid
+  transactionTrackingRef String    @unique @map("transaction_tracking_ref")
+  accountNumber          String    @unique @map("account_number")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @default(now()) @map("updated_at")
+  active                 Boolean   @default(true)
+  customerId             String    @unique @map("customer_id")
+  name                   String
+  phone                  String
+  bvn                    String    @unique
+  dob                    DateTime  @map("date_of_birth")
+  workspacePk            Int       @map("workspace_pk")
+  workspaceId            String    @unique @default(uuid()) @map("workspace_id") @db.Uuid
+  workspace              Workspace @relation(fields: [workspacePk, workspaceId], references: [pk, id])
+
+  @@unique([pk, id])
+  @@map("workspace_user_accounts")
+}
+
+model WorkspaceMandate {
+  pk                    Int                    @id @default(autoincrement())
+  id                    String                 @unique @default(uuid()) @db.Uuid
+  code                  String                 @unique
+  verified              Boolean                @default(false)
+  cid                   String                 @map("cid")
+  workspacePk           Int                    @map("workspace_pk")
+  workspaceId           String                 @map("workspace_id") @db.Uuid
+  workspace             Workspace              @relation(fields: [workspacePk, workspaceId], references: [pk, id])
+  createdAt             DateTime               @default(now()) @map("created_at")
+  startDate             DateTime               @map("start_date")
+  endDate               DateTime               @map("end_date")
+  accountName           String
+  accountNumber         String                 @map("account_number")
+  amount                Decimal
+  bankCode              String                 @map("bank_code")
+  payerName             String                 @map("payer_name")
+  address               String
+  subscriberCode        String                 @map("subscriber_code")
+  phoneNumber           String                 @map("phone_number")
+  active                Boolean                @default(true)
+  interval              Int
+  workspaceTransactions WorkspaceTransaction[]
+
+  @@unique([pk, id])
+  @@map("workspace_mandates")
+}
+
+model WorkspaceTransaction {
+  pk                     Int                   @id @default(autoincrement())
+  id                     String                @unique @default(uuid()) @db.Uuid
+  amount                 Float
+  workspacePk            Int?                  @map("bank_pk")
+  workspaceId            String?               @map("bank_id") @db.Uuid
+  workspace              Workspace?            @relation(fields: [workspacePk, workspaceId], references: [pk, id])
+  createdAt              DateTime              @default(now()) @map("created_at")
+  uref                   String                @unique
+  type                   TransactionType
+  recipient              String?
+  recipientName          String?
+  description            String?
+  completed              Boolean               @default(false)
+  globalTransactionLogPk Int?                  @map("global_transaction_log_pk")
+  globalTransactionLogId String?               @map("global_transaction_log_id") @db.Uuid
+  globalTransactionLog   GlobalTransactionLog? @relation(fields: [globalTransactionLogPk, globalTransactionLogId], references: [pk, id])
+  mandatePk              Int?                  @map("mandate_pk")
+  mandateId              String?               @map("mandate_id") @db.Uuid
+  mandate                WorkspaceMandate?     @relation(fields: [mandatePk, mandateId], references: [pk, id])
+
+  @@unique([pk, id])
+  @@unique([globalTransactionLogPk, globalTransactionLogId])
+  @@map("workspace_transactions")
+}
+
+model WebhookEvent {
+  pk          Int       @id @default(autoincrement())
+  id          String    @unique @default(uuid()) @db.Uuid
+  event       String
+  data        Json
+  success     Boolean   @default(false)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  workspacePk Int       @map("workspace_pk")
+  workspaceId String    @map("workspace_id") @db.Uuid
+  workspace   Workspace @relation(fields: [workspacePk, workspaceId], references: [pk, id])
+
+  @@unique([pk, id])
+  @@map("webhook_events")
+}
+
+enum BusinessSetupStage {
+  OTP_VERIFICATION
+  BVN_VERIFICATION
+  FACE_VERIFICATION
+  PIN_SETUP
+  PROFILE_SETUP
+  OWNER_ID_VERIFICATION
+  BUSINESS_ID_VERIFICATION
+  COMPLETED
+}
+
+model BusinessUser {
+  pk              Int                @id @default(autoincrement())
+  id              String             @unique @default(uuid()) @db.Uuid
+  email           String             @unique
+  phone           String             @unique
+  password        String
+  pin             String?
+  deviceToken     String?
+  active          Boolean            @default(true)
+  emailVerified   Boolean            @default(false) @map("email_verified")
+  phoneVerified   Boolean            @default(false) @map("phone_verified")
+  regStage        BusinessSetupStage @default(OTP_VERIFICATION) @map("reg_stage")
+  businessProfile BusinessProfile?
+  businessStore   BusinessStore?
+  businessKyc     BusinessKyc?
+
+  @@unique([pk, id])
+  @@map("business_users")
+}
+
+model BusinessProfile {
+  pk         Int          @id @default(autoincrement())
+  id         String       @unique @default(uuid()) @db.Uuid
+  photo      String?
+  dob        DateTime?
+  firstName  String?      @map("first_name")
+  middleName String?      @map("middle_name")
+  surname    String?      @map("surname")
+  gender     Gender?
+  country    String?
+  state      String?
+  city       String?
+  address    String?
+  lga        String?
+  businessPk Int          @unique @map("user_pk")
+  businessId String       @unique @map("user_id") @db.Uuid
+  business   BusinessUser @relation(fields: [businessPk, businessId], references: [pk, id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([pk, id])
+  @@unique([businessPk, businessId])
+  @@map("business_profiles")
+}
+
+model BusinessKyc {
+  pk           Int                     @id @default(autoincrement())
+  id           String                  @unique @default(uuid()) @db.Uuid
+  bvn          String?
+  idType       IdentificationCardType? @map("id_type")
+  idNumber     String?                 @map("id_number")
+  idImageUrl   String?                 @map("id_image_url")
+  cacNumber    String?                 @map("cac_number")
+  cacImageUrl  String?                 @map("cac_image_url")
+  cacVerified  VerificationStatus      @default(NOT_VERIFIED) @map("cac_verified")
+  bvnVerified  VerificationStatus      @default(NOT_VERIFIED) @map("bvn_verified")
+  idVerified   VerificationStatus      @default(NOT_VERIFIED) @map("id_verified")
+  faceVerified VerificationStatus      @default(NOT_VERIFIED) @map("face_verified")
+  rawBvnData   Json?
+  rawIdData    Json?
+  rawFaceData  Json?
+  rawCacData   Json?
+  businessPk   Int                     @map("business_pk")
+  businessId   String                  @map("business_id") @db.Uuid
+  business     BusinessUser            @relation(fields: [businessPk, businessId], references: [pk, id])
+
+  @@unique([pk, id])
+  @@unique([businessPk, businessId])
+  @@map("business_kyc")
+}
+
+model BusinessStore {
+  pk                                 Int          @id @default(autoincrement())
+  id                                 String       @unique @default(uuid()) @db.Uuid
+  name                               String       @map("business_name")
+  address                            String?      @map("business_address")
+  city                               String?      @map("business_city")
+  state                              String?      @map("business_state")
+  country                            String?      @map("business_country")
+  zipCode                            String?      @map("business_zip_code")
+  currency                           Currency?    @map("business_currency")
+  registrationNumber                 String?      @map("business_registration_number")
+  registrationImage                  String?      @map("business_registration_image")
+  registrationNumberVerificationData Json?        @map("business_registration_number_verification_data")
+  logo                               String?
+  tagline                            String?
+  description                        String?
+  banner                             String?
+  businessPk                         Int          @map("business_pk")
+  businessId                         String       @map("business_id") @db.Uuid
+  business                           BusinessUser @relation(fields: [businessPk, businessId], references: [pk, id])
+
+  @@unique([pk, id])
+  @@unique([businessPk, businessId])
+  @@map("business_stores")
+}
+
+
+
+// https://mysmeapp.ecobank.com/Verify/Loading
